@@ -1,0 +1,2 @@
+sysctl net.ipv4.ip_forward		<--- mostra se ip_forward è ON
+sysctl -w net.ipv4.ip_forward=1		<--- setta l'ip_forward a ON

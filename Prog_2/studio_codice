@@ -1,0 +1,82 @@
+Crea un puntatore ad una struttura della libreria pcap chiamata pcap_t (il puntatore si chiama *pd).
+Crea un buffer di char di 200 dove andrà ad inserire le stringhe ottenute dal file di configurazione per attivare le diverse funzionalità dell'analyzer.
+
+
+/* TCP */
+
+se "strcmp(buffer,"tcp")==0" allora vuol dire che ho scelto di fare l'analisi ai pacchetti TCP.
+Con i successivi tre strcmp vado a vedere quali modalità di confronto voglio fare, ovvero: "print"(→p_tcp=1), "run"(→r_tcp=1), "filt"(filtrata... → //controllo dopo il codice).
+
+Una volta riempito il "buffer", alla fine del file "analyzer.c" viene richiamata una funzione della libreria PCAP chiamata "pcap_open_live" che va ad aprire il 'device' per la cattura dei pacchetti.
+Infatti fa:
+
+	pd=pcap_open_live(device,LENSNIF,0,1000,buffer);
+
+dove: "device" è l'interfaccia di rete prese dalla prima riga del file di config., LENSNIF (impostato all'inizio del file) è la dimensione dell'istantanea di sniffing, "0" indice se la cheda di rete viene messa in modalità promisc o meno, "1000" indica il timeout di buffer in millisecondi e poi gli passa buffer.
+Questa "pcap_open_live" restituisce un puntatore alla struttura "pcap_t" che Mazzini ha chiamato "pd".
+Quindi se pd!=NULL usa un'altra funzione di pcap che è "pcap_loop" che è una funzione per il live capture dei pacchetti dove, gli si passa struttura pcap_t, "-1" inica che deve cercare all'infinito", liv2 probabilmente è da dove partire a catturare ("...The third argument is the name of the callback function (just its identifier, no parentheses)...") e il solito buffer (argomenti passati alla callback).
+
+
+###########################################
+pcap_pkthdr: header del pacchetto sniffato
+###########################################
+
+
+In liv2.c: con "p" si indica la posizione a cui ci troviamo nel pacchetto di livello 2.
+"if(p_liv2)" è true se nel file analyzer.c, a riga 41, viene settato a 1.
+quando entriamo in quell'if: con "myprintf" si concatenano le stringhe per formare l'output e con "print_liv2()" si stampa il contenuto del pacchetto (???).
+Infatti: 
+
+	print_liv2(p+6) → stampa il MAC sorgente.
+	print_liv2(p)	→stampa il MAC destinatario (anch'esso lungo 6 byte ma nel pacchetto si trova esattamente prima di quello di sorgente.
+
+ed infine vengono concatenati type" e "len".
+[NOTARE CHE MANCANO I PRIMI DUE CAMPI DEL FRAME.. PROBABILMENTE SI INIZIA A SNIFFARE DAL CAMPO DESTINATION ADDRESS].
+
+
+
+Fuori dall'if chiama lo sniffing a liv3.
+
+In liv3.c vado a controllare se è settato il flag "p_ipv4=1".
+Se si concateno "IPV4 | " con l'IP sorgente ricavato da "print_ipv4(p+12)".
+
+Il "+12" serve per arrivare dall'inizio dell'header del pacchetto IP al campo "source address" che si trova a 96 bit di distanza e quindi 12 byte [96bit = 12byte].
+
+Il "+16", chiaramente, serve per il destination address che si trova a 128 bit di distanza, quindi 16 byte.
+A questi (sempre con "myprintf") vengono concatenati anche ID, Time-to-live, protocollo, lunghezza e fragment offset.
+
+A sua volta alla fine di tutto questo viene chiamato il liv4 passandogli: il protocollo, la lunghezza dell'Internet Header Length (ihl) e p+ihl.
+
+Al livello 4 si salva: 
+
+1) ssap → "ssap=ntohs(*(u_int *)p);" che sarebbe la source port;
+2) dsap → "dsap=ntohs(*(u_int *)p+2);" che sarebbe la destination port;
+3) seq_num (ISN) → "seq_num=ntohl(*(u_long *)(p+4));" Initial Sequence Number;
+4) ack_num (ACK) → "ack_num=ntohl(*(u_long *)(p+8));" Acknowledge
+5) urg → "urg=ntohl(*(u_long *)(p+18));" Flag dati urgenti
+6) ihl → /* NON CAPISCO */
+7) ff → "ff=*(p+13);" Vari flag del tcp, iniziano appunto al 104-esimo[13*8] bit)
+
+[ntohs: traduce gli unsigned short integer della rete nell'ordine dei byte dell'host]
+
+i successivi "if" vanno a vedere se i vari flag sono settati a 1 (e quindi stampati) o meno, fino al flag "FIN"che indica la chiusura della connessione TCP.
+Successivamente viene richiamato il liv7 che stampa il contenuto del pacchetto.
+
+
+#####################################
+OUTBUF butta furoi tutto in output??????????
+#####################################
+
+
+Per quanto riguarda il filtraggio in tcp, nell'analyzer è possibile farlo solo impostando porta sorgente e destinataria (..in general.congif → filt 0 0).
+Vengono create due strutture che hanno solo due interi (source port ssat e destination port dsat) e un puntatore che andrà a puntare ad un nodo successivo di una lista.
+Se il flag di filtraggio è attivo e si sono impostate nel file config le porte, 
+
+Penso si crei una lista di strutture e viene posto il primo puntatore "aux1_tcp" = alla struttura filt_tcp.
+Il primo if (...if(aux1_tcp!=NULL)...) va a vedere se la struttura ha dei dati.
+Se si la scorre fino all'ultimo nodo altri menti salta al passo successivo dove viene allocato una nuova area di memoria (e quindi viene inserito un nuovo nodo in fondo alla lista di strutture) con la malloc (aux_tcp).
+Se aux1_tcp è nullo allora aux_tcp=filt_tcp altrimenti si pone aux_tcp come ultimo della lista e si imposta che il puntatore al nodo successivo di aux1_tcp punti proprio a aux_tcp.
+SI va a leggere ssap e dsap dall'ultimo nodo per il filtraggio e gli si imposta il puntatore al successivo = a NULL.
+
+
+

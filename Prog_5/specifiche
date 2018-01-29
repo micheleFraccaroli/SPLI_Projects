@@ -1,0 +1,20 @@
+cifrario di cesare.. [C = msg + offset].
+
+cifrare un testo.. prendere un testo da un sito e cifrarlo
+
+1) scelgo il testo
+2) lo cifro
+3) lo decifro
+4) faccio un check e deve tornare la tessa roba
+
+gli offset possono essere messi all'intero codice ASCII o alle lettere o solo ai numeri ecc ecc.. COME CAZZO CI PARE!!
+
+5) ATTACCO --> dato il testo cifrato senza sapere l'offset cerchiamo di fare un attacco per scoprire il testo originale.
+
+vediamo due metodi per l'attacco (sceglierne uno):
+
+-forza bruta (provo tutti gli offset possibili)
+ devo scaricarmi un dizionario di parole e faccio il match delle parole che tento di decriptare con quelle del dizionario. (obbiettivo trovare offset)
+
+-approccio a frequenza (es: la lingua italiano ha una frequenza dell'evenienza delle lettere fatta in un certo modo), faccio la frequenza del cifrato e trovo le associazioni tra l'originale e la cifrata nel grafico delle frequenze.
+La frequenza ce la ricaviamo come ci pare.

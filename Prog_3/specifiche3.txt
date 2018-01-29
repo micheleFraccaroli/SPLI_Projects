@@ -1,0 +1,11 @@
+terza esperienza:
+
+controllo di traffico
+
+esiste un modulo di processamento statistico dei pacchetti che permette di inserire regole sui pacchetti (ne perdo tot, ne scarto tot) ma posso anche inserire ritardi (casuali).
+
+per prima cosa provare a mettere ritardi costanti, scaricare dei file, controllare la dim della finestra e vedere che succede.
+
+1)componente dove si genere del traffico con ritardi e perdite e far vedere che succede al variare dei paramentri (esempio su connessione tcp)    
+2)andare a definire delle policy dove ad esempio limitare la banda (guardare tc nelle slide prof)
+

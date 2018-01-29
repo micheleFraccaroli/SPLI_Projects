@@ -1,0 +1,20 @@
+# Two flow simulation
+
+# lo will be used to TX and RX 
+0       i       0       lo
+0       i       1       lo
+
+# set simulation packet size to 1k
+0       S      0        1k
+0       S      1        1k
+
+# start both flows
+0       R      0        100k
+0       R      1        100k
+
+# flow 1 to 50k and 10k later
+2000    R      1        50k
+4000    R      1        10k
+
+# finish at 6sec
+6000    X      0        0

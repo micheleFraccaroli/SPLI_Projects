@@ -1,0 +1,25 @@
+IPTABLES LOAD BALANCING
+=======================
+
+Con --state NEW andiamo a vedere se il tag SYN nell'header tcp del pacchetto in entrata è settato a 1, poi andiamo ad eseguire un conteggio su quei pacchetti con --mode nth dove, --every 2, serve a resettare il counter ogni due pacchetti (1,2...1,2...1,2...).
+Questi pacchetti, attraverso il tag CONNMARK1 vengono passati nella nuova catena creata (CONNMARK1) dove: 
+1) viene salvata nel pacchetto IP l'fwmark con -J MARK --save-mark 1; 
+2) con -J CONNMARK --save-mark viene copiato l'fwmark salvato nel pacchetto nella Netfilter Table State;
+
+Voglio lavorare sui pacchetti di connessioni esistenti, quindi con l'uso del modulo --state ESTABLISHED,RELATED vado a vedere l'attuale connessione tcp tra due ip che sta cercando di avvenire e vedo dalla netfilter state table che è una connessione esistente.
+Ora grazie a -j RESTOREMARK, vado a leggere dalla netfilter state table l'fwmark precedentemente settato e vado a settarlo nei pacchetti IP di quella connessione tcp.
+
+La regola --mode nth --every 2 serve perché quando arriva il primo pacchetto che soddisfa tutti i match precedenti a '--mode nth....' allora viene eseguito il jump successivo, ovvero -j CONNMARK1 e quindi viene segnato il primo fwmark.
+Il secondo pacchetto che arriva, grazie a 'every 2' salta il jump '-j CONNMARK1' e chiaramente va alla riga sotto dove succede la medesima cosa e esegue il jump '-j CONNMARK2'.
+Quindi, '-m statistic --mode nth --every 2 --packet 0 -j CONNMARK1' serve per: attivare il modulo STATISTIC, usare la mode NTH che va a contare i pacchetti (primo, secondo, terzo....) e '...--every 2 --packet 0' serve per andare a matchare un pacchetto ogni 2 e inizializzare il contatore di nth a 0.
+Nella riga successiva, sarà '...--every 2 --packet 1' perché matcheremo un pacchetto ogni 2 e inizializzerremo il contatore a 1.
+La regola matchata eseguirà il jump CONNMARK.
+
+Tutto ciò, ovviamente, avviene nella tabella di MANGLE.
+
+Successivamente, sempre nella catena di PREROUTING, nella tabella di NAT, riutilizzando i mark precedentemente settati , vengono reindirizzate le connessioni in entrata a due diversi server che lavorano su due indirizzi IP diversi.
+
+Per ultimo, sempre nella tabella di NAT ma nella catena di POSTROUTING, viene reindirizzato il traffico alla sorgente con l'IP del firewall.
+
+
+
